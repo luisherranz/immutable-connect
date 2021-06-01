@@ -1,6 +1,7 @@
 import { proxy, snapshot, subscribe, useSnapshot } from "valtio";
 import { devtools } from "./devtools";
 import wrapActions from "./proxies/actions";
+import wrapStateCreator from "./proxies/state";
 import type { InitialStore, ResolveActions } from "./types";
 import type { Any } from "ts-toolbelt";
 import { memo } from "react";
@@ -45,7 +46,8 @@ const createStore = (initialStore: InitialStore, name: string = "Frontity") => {
 
   // Proxify the state with a wrapper that injects the store to the derived
   // state.
-  store.state = proxifyState(state);
+  const wrapState = wrapStateCreator(store);
+  store.state = wrapState(valtioState);
 
   // Add store to window (for debugging purpuses).
   (window as any).connect = store;
@@ -64,12 +66,12 @@ const createStore = (initialStore: InitialStore, name: string = "Frontity") => {
         actions: store.actions as Any.Compute<
           ResolveActions<InitialStore["actions"]>
         >,
-        state: wrapState(snapshot, snapshot)
+        state: wrapState(snapshot)
       };
     },
     connect: memo,
-    onSnapshot: (fn: (state: Store["state"]) => void) =>
-      subscribe(state, () => fn(state), false)
+    onSnapshot: (fn: (state: InitialStore["state"]) => void) =>
+      subscribe(store.state, () => fn(store.state), false)
   };
 };
 

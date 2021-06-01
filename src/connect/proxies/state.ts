@@ -9,12 +9,11 @@ const wellKnownSymbols = new Set(
     .filter((value) => typeof value === "symbol")
 );
 
-export const wrapState = <Store extends InitialStore>(
-  state: Store["state"],
-  snapshot?: Store["state"]
-): Store["state"] => {
-  return new Proxy(state, {
-    get(target, key, receiver) {
+export const wrapStateCreator = (
+  store: InitialStore
+): ((snapshot: InitialStore["state"]) => InitialStore["state"]) => {
+  const handlers = {
+    get(target: object, key: PropertyKey, receiver?: any) {
       const result = Reflect.get(target, key, receiver);
       if (
         (typeof key === "symbol" && wellKnownSymbols.has(key)) ||
@@ -23,14 +22,14 @@ export const wrapState = <Store extends InitialStore>(
         return result;
 
       if (!Array.isArray(target) && typeof result === "function")
-        return result({
-          state: snapshot || store.state,
-          actions: store.actions
-        });
+        return result(store);
 
-      if (typeof result === "object") return wrapState(result, snapshot);
+      if (typeof result === "object") return new Proxy(result, handlers);
 
       return result;
     }
-  });
+  };
+  return (snapshot: InitialStore["state"]) => new Proxy(snapshot, handlers);
 };
+
+export default wrapStateCreator;
