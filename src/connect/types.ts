@@ -15,9 +15,7 @@ export interface InitialStore {
 }
 
 /**
- * Action without arguments. Can be sync or async.
- *
- * Used internally by the InitialStore.
+ * Action without arguments. It can be sync or async.
  */
 type InitialStoreActionWithoutArgs = (store: {
   state: any;
@@ -25,9 +23,7 @@ type InitialStoreActionWithoutArgs = (store: {
 }) => void | Promise<void>;
 
 /**
- * Action with arguments. Can be sync or async.
- *
- * Used internally by the InitialStore.
+ * Action with arguments. It can be sync or async.
  */
 type InitialStoreActionWithArgs = (store: {
   state: any;
@@ -36,13 +32,14 @@ type InitialStoreActionWithArgs = (store: {
 
 /**
  * Map of actions.
- *
- * Used internally by the InitialStore.
  */
 interface InitialStoreActionMap {
   [key: string]: InitialStoreActions;
 }
 
+/**
+ * Action, with or without arguments. It can be sync or async.
+ */
 export type InitialStoreAction =
   | InitialStoreActionWithoutArgs
   | InitialStoreActionWithArgs;
@@ -50,10 +47,8 @@ export type InitialStoreAction =
 /**
  * Action map item. Can contain actions with or without args or other action
  * maps.
- *
- * Used internally by the InitialStore.
  */
-export type InitialStoreActions =
+type InitialStoreActions =
   | InitialStoreActionWithArgs
   | InitialStoreActionWithoutArgs
   | InitialStoreActionMap;

@@ -1,10 +1,5 @@
 import { snapshot } from "valtio";
-import type {
-  InitialStore,
-  InitialStoreActions,
-  InitialStoreAction,
-  DevToolsSend
-} from "../types";
+import type { InitialStore, InitialStoreAction, DevToolsSend } from "../types";
 
 /**
  * Execute an action, injecting the store
@@ -109,7 +104,7 @@ const executeAction = (
 export const wrapActions = (
   store: InitialStore,
   send: DevToolsSend
-): Record<string, InitialStoreActions> => {
+): InitialStore["actions"] => {
   // Create a handlers object that will be reused by all proxies using the
   // closure of the `store`.
   const handlers = {
@@ -127,15 +122,12 @@ export const wrapActions = (
         throw new Error("Only actions or objects can be defined in `actions`.");
 
       // If it is a map, wrap it again with the proxy.
-      return new Proxy<InitialStoreActions>(action, handlers);
+      return new Proxy<InitialStore["actions"]>(action, handlers);
     }
   };
 
   // Wrap the first map of actions with the proxy.
-  return new Proxy<Record<string, InitialStoreActions>>(
-    store.actions,
-    handlers
-  );
+  return new Proxy<InitialStore["actions"]>(store.actions, handlers);
 };
 
 export default wrapActions;
