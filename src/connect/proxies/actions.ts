@@ -1,21 +1,22 @@
 import { snapshot } from "valtio";
 import type {
   InitialStore,
-  InitialAction,
-  InitialActionMap,
+  InitialStoreActions,
+  InitialStoreAction,
   DevToolsSend
 } from "../types";
 
 /**
+ * Execute an action, injecting the store
  *
  * @param action - The action that is about to be run.
  * @param store - The store containing state and actions.
  * @param name - The name of this action.
  * @param send - The send method of the redux devtools.
  */
-const actionExecuter = <Store extends InitialStore>(
-  action: InitialAction<Store>,
-  store: Store,
+const executeAction = (
+  action: InitialStoreAction,
+  store: InitialStore,
   name: string,
   send: DevToolsSend
 ) => (...args: any[]): Promise<void> | void => {
@@ -99,21 +100,16 @@ const actionExecuter = <Store extends InitialStore>(
 };
 
 /**
- * Wraps the actions of the store in a recursive proxy that takes care of
- * injecting the store when executing the actions, like:
- * ```js
- * ({ state, actions }) => {
- *  //...
- * };
- * ```
+ * Wrap the actions of the store in a recursive proxy that takes care of
+ * injecting the store when executing the actions.
  *
  * @param store - The store containing actions and state.
  * @param send - The send method of the redux devtools.
  */
-export const actionsProxy = <Store extends InitialStore>(
-  store: Store,
+export const wrapActions = (
+  store: InitialStore,
   send: DevToolsSend
-): InitialActionMap<Store> => {
+): Record<string, InitialStoreActions> => {
   // Create a handlers object that will be reused by all proxies using the
   // closure of the `store`.
   const handlers = {
@@ -123,7 +119,7 @@ export const actionsProxy = <Store extends InitialStore>(
 
       // If it is an action, execute it using the wrapper.
       if (typeof action === "function")
-        return actionExecuter(action, store, key.toString(), send);
+        return executeAction(action, store, key.toString(), send);
 
       // If it is not a map, throw. Only actions and maps of actions are
       // allowed.
@@ -131,45 +127,15 @@ export const actionsProxy = <Store extends InitialStore>(
         throw new Error("Only actions or objects can be defined in `actions`.");
 
       // If it is a map, wrap it again with the proxy.
-      return new Proxy<InitialActionMap<Store>>(action, handlers);
+      return new Proxy<InitialStoreActions>(action, handlers);
     }
   };
 
   // Wrap the first map of actions with the proxy.
-  return new Proxy<InitialActionMap<Store>>(store.actions, handlers);
+  return new Proxy<Record<string, InitialStoreActions>>(
+    store.actions,
+    handlers
+  );
 };
 
-/**
- * A list of internal JavaScript symbols that should be skipped.
- */
-const wellKnownSymbols = new Set(
-  Object.getOwnPropertyNames(Symbol)
-    .map((key) => Symbol(key))
-    .filter((value) => typeof value === "symbol")
-);
-
-export const wrapState = <Store extends InitialStore>(
-  state: Store["state"],
-  snapshot?: Store["state"]
-): Store["state"] => {
-  return new Proxy(state, {
-    get(target, key, receiver) {
-      const result = Reflect.get(target, key, receiver);
-      if (
-        (typeof key === "symbol" && wellKnownSymbols.has(key)) ||
-        key === "constructor"
-      )
-        return result;
-
-      if (!Array.isArray(target) && typeof result === "function")
-        return result({
-          state: snapshot || store.state,
-          actions: store.actions
-        });
-
-      if (typeof result === "object") return wrapState(result, snapshot);
-
-      return result;
-    }
-  });
-};
+export default wrapActions;

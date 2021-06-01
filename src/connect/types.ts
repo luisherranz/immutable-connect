@@ -43,13 +43,17 @@ interface InitialStoreActionMap {
   [key: string]: InitialStoreActions;
 }
 
+export type InitialStoreAction =
+  | InitialStoreActionWithoutArgs
+  | InitialStoreActionWithArgs;
+
 /**
  * Action map item. Can contain actions with or without args or other action
  * maps.
  *
  * Used internally by the InitialStore.
  */
-type InitialStoreActions =
+export type InitialStoreActions =
   | InitialStoreActionWithArgs
   | InitialStoreActionWithoutArgs
   | InitialStoreActionMap;

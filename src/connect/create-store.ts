@@ -1,6 +1,6 @@
 import { proxy, snapshot, subscribe, useSnapshot } from "valtio";
 import { devtools } from "./devtools";
-import { createActionProxy } from "./proxies";
+import wrapActions from "./proxies/actions";
 import type { InitialStore, ResolveActions } from "./types";
 import type { Any } from "ts-toolbelt";
 import { memo } from "react";
@@ -27,22 +27,24 @@ import { memo } from "react";
  * useConnect()`).
  */
 
-const createStore = <Store extends InitialStore>(
-  initialStore: Store,
-  name: string = "Frontity"
-) => {
+const createStore = (initialStore: InitialStore, name: string = "Frontity") => {
+  // Create the store to pass it down to
+  const store: InitialStore = { state: {}, actions: {} };
+
   // First proxification from valtio. This generates the first proxy that is
   // used to keep track of mutations.
-  const valtioState = proxy(initialStore.state);
+  const valtioState: InitialStore["state"] = proxy(initialStore.state);
 
   // Initialize the Redux DevTools.
   const { send } = devtools(valtioState, name);
   send("Frontity started", snapshot(valtioState));
 
-  // Initialize the store to pass it to the proxy creators.
-  const store = { state: valtioState, actions: {} };
+  // Proxify the actions with a wrapper that injects the store when an action is
+  // executed.
+  store.actions = wrapActions(store, send);
 
-  store.actions = createActionProxy(store);
+  // Proxify the state with a wrapper that injects the store to the derived
+  // state.
   store.state = proxifyState(state);
 
   // Add store to window (for debugging purpuses).
@@ -50,7 +52,7 @@ const createStore = <Store extends InitialStore>(
 
   return {
     useConnect: () => {
-      const snapshot = useSnapshot(state);
+      const snapshot = useSnapshot(valtioState);
 
       // Fake susbscription. In valtio, components that don't use the `state`
       // are subscribed to "all changes" and therefore always rerender. This is
@@ -59,7 +61,9 @@ const createStore = <Store extends InitialStore>(
       snapshot.CONNECT; // eslint-disable-line
 
       return {
-        actions: store.actions as Any.Compute<ResolveActions<Store["actions"]>>,
+        actions: store.actions as Any.Compute<
+          ResolveActions<InitialStore["actions"]>
+        >,
         state: wrapState(snapshot, snapshot)
       };
     },
