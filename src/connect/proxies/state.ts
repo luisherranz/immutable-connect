@@ -13,8 +13,9 @@ export const wrapStateCreator = (
   store: InitialStore
 ): ((snapshot: InitialStore["state"]) => InitialStore["state"]) => {
   const handlers = {
-    get(target: object, key: PropertyKey, receiver?: any) {
+    get(target: object, key: PropertyKey, receiver?: any): any {
       const result = Reflect.get(target, key, receiver);
+
       if (
         (typeof key === "symbol" && wellKnownSymbols.has(key)) ||
         key === "constructor"
@@ -24,7 +25,8 @@ export const wrapStateCreator = (
       if (!Array.isArray(target) && typeof result === "function")
         return result(store);
 
-      if (typeof result === "object") return new Proxy(result, handlers);
+      if (typeof result === "object" && typeof key === "string")
+        return new Proxy(result, handlers);
 
       return result;
     }

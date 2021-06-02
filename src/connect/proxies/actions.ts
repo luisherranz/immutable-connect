@@ -118,8 +118,10 @@ export const wrapActions = (
 
       // If it is not a map, throw. Only actions and maps of actions are
       // allowed.
-      if (typeof action !== "object")
+      if (typeof action !== "object") {
+        debugger;
         throw new Error("Only actions or objects can be defined in `actions`.");
+      }
 
       // If it is a map, wrap it again with the proxy.
       return new Proxy<InitialStore["actions"]>(action, handlers);

@@ -11,7 +11,7 @@ import { memo } from "react";
  * - ✅ DevTools sync action messages.
  * - ✅ Switch to React Concurrent.
  * - ✅ Add derived state.
- * - Derived state types.
+ * - Derived state types..
  * - Inject store when using `connect()`.
  * - Make sure connected children rerender.
  * - Pass complete action names, including namespaces, to devtools.
@@ -28,7 +28,10 @@ import { memo } from "react";
  * useConnect()`).
  */
 
-const createStore = (initialStore: InitialStore, name: string = "Frontity") => {
+const createStore = <Store extends InitialStore>(
+  initialStore: Store,
+  name: string = "Frontity"
+) => {
   // Create the store to pass it down to
   const store: InitialStore = { state: {}, actions: {} };
 
@@ -49,7 +52,7 @@ const createStore = (initialStore: InitialStore, name: string = "Frontity") => {
   const wrapState = wrapStateCreator(store);
   store.state = wrapState(valtioState);
 
-  // Add store to window (for debugging purpuses).
+  // Add store to window (for debugging).
   (window as any).connect = store;
 
   return {
@@ -57,16 +60,14 @@ const createStore = (initialStore: InitialStore, name: string = "Frontity") => {
       const snapshot = useSnapshot(valtioState);
 
       // Fake susbscription. In valtio, components that don't use the `state`
-      // are subscribed to "all changes" and therefore always rerender. This is
+      // are subscribed to all changes and therefore always rerender. This is
       // a problem in components that don't use the `state`, like:
       // `const { actions } = useConnect();
       snapshot.CONNECT; // eslint-disable-line
 
       return {
-        actions: store.actions as Any.Compute<
-          ResolveActions<InitialStore["actions"]>
-        >,
-        state: wrapState(snapshot)
+        actions: store.actions as Any.Compute<ResolveActions<Store["actions"]>>,
+        state: wrapState(snapshot) as Any.Compute<Store["state"]>
       };
     },
     connect: memo,
