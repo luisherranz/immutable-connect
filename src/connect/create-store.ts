@@ -11,9 +11,12 @@ import { memo } from "react";
  * - ✅ DevTools sync action messages.
  * - ✅ Switch to React Concurrent.
  * - ✅ Add derived state.
- * - Derived state types..
+ * - Try a single-proxy approach.
+ * - Derived state types.
  * - Inject store when using `connect()`.
  * - Make sure connected children rerender.
+ * - Make sure parents that are subscribed to refs don't rerender (state.users
+ * shouldn't rerender if only state.users[3].name changed).
  * - Pass complete action names, including namespaces, to devtools.
  * - Add onMutation hook.
  * - Add onAction hook.
@@ -45,7 +48,7 @@ const createStore = <Store extends InitialStore>(
 
   // Proxify the actions with a wrapper that injects the store when an action is
   // executed.
-  store.actions = wrapActions(store, send);
+  store.actions = wrapActions(store, initialStore.actions, send);
 
   // Proxify the state with a wrapper that injects the store to the derived
   // state.

@@ -103,6 +103,7 @@ const executeAction = (
  */
 export const wrapActions = (
   store: InitialStore,
+  actions: InitialStore["actions"],
   send: DevToolsSend
 ): InitialStore["actions"] => {
   // Create a handlers object that will be reused by all proxies using the
@@ -119,7 +120,6 @@ export const wrapActions = (
       // If it is not a map, throw. Only actions and maps of actions are
       // allowed.
       if (typeof action !== "object") {
-        debugger;
         throw new Error("Only actions or objects can be defined in `actions`.");
       }
 
@@ -129,7 +129,7 @@ export const wrapActions = (
   };
 
   // Wrap the first map of actions with the proxy.
-  return new Proxy<InitialStore["actions"]>(store.actions, handlers);
+  return new Proxy<InitialStore["actions"]>(actions, handlers);
 };
 
 export default wrapActions;
