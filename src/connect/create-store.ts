@@ -1,7 +1,7 @@
 import { proxy, snapshot, subscribe, useSnapshot } from "valtio";
 import { devtools } from "./devtools";
 import wrapActions from "./proxies/actions";
-import wrapStateCreator from "./proxies/state";
+import wrapState from "./proxies/state";
 import type { InitialStore, ResolveActions } from "./types";
 import type { Any } from "ts-toolbelt";
 import { memo } from "react";
@@ -52,7 +52,6 @@ const createStore = <Store extends InitialStore>(
 
   // Proxify the state with a wrapper that injects the store to the derived
   // state.
-  const wrapState = wrapStateCreator(store);
   store.state = wrapState(valtioState);
 
   // Add store to window (for debugging).
