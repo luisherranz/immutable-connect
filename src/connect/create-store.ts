@@ -2,7 +2,8 @@ import { proxy, snapshot, subscribe, useSnapshot } from "valtio";
 import { devtools } from "./devtools";
 import wrapActions from "./proxies/actions";
 import wrapState from "./proxies/state";
-import type { InitialStore, ResolveActions } from "./types";
+import type InitialStore from "./types/generic-store";
+import type { ResolveActions, ResolveState } from "./types/resolve";
 import type { Any } from "ts-toolbelt";
 import { memo } from "react";
 
@@ -11,8 +12,10 @@ import { memo } from "react";
  * - ✅ DevTools sync action messages.
  * - ✅ Switch to React Concurrent.
  * - ✅ Add derived state.
- * - Try a single-proxy approach.
  * - Derived state types.
+ * - Reuse proxies for the same objects (references).
+ *    https://excalidraw.com/#json=5473289296150528,PX718mlfznZpqVdZlHSAvg
+ * - Mutate state passed to components.
  * - Inject store when using `connect()`.
  * - Make sure connected children rerender.
  * - Make sure parents that are subscribed to refs don't rerender (state.users
@@ -35,16 +38,16 @@ const createStore = <Store extends InitialStore>(
   initialStore: Store,
   name: string = "Frontity"
 ) => {
-  // Create the store to pass it down to
+  // Init the store to pass its reference to the wrappers.
   const store: InitialStore = { state: {}, actions: {} };
 
   // First proxification from valtio. This generates the first proxy that is
   // used to keep track of mutations.
-  const valtioState: InitialStore["state"] = proxy(initialStore.state);
+  const mutableState: InitialStore["state"] = proxy(initialStore.state);
 
   // Initialize the Redux DevTools.
-  const { send } = devtools(valtioState, name);
-  send("Frontity started", snapshot(valtioState));
+  const { send } = devtools(mutableState, name);
+  send("Frontity started", snapshot(mutableState));
 
   // Proxify the actions with a wrapper that injects the store when an action is
   // executed.
@@ -52,14 +55,14 @@ const createStore = <Store extends InitialStore>(
 
   // Proxify the state with a wrapper that injects the store to the derived
   // state.
-  store.state = wrapState(valtioState);
+  store.state = wrapState(mutableState);
 
   // Add store to window (for debugging).
   (window as any).connect = store;
 
   return {
     useConnect: () => {
-      const snapshot = useSnapshot(valtioState);
+      const snapshot = useSnapshot(mutableState);
 
       // Fake susbscription. In valtio, components that don't use the `state`
       // are subscribed to all changes and therefore always rerender. This is
@@ -69,7 +72,7 @@ const createStore = <Store extends InitialStore>(
 
       return {
         actions: store.actions as Any.Compute<ResolveActions<Store["actions"]>>,
-        state: wrapState(snapshot) as Any.Compute<Store["state"]>
+        state: wrapState(snapshot) as Any.Compute<ResolveState<Store["state"]>>
       };
     },
     connect: memo,

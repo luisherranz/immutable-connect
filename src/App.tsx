@@ -9,12 +9,26 @@ interface UserType {
   surname: string;
 }
 
-interface Store {
+interface InitialStore {
   state: {
-    users: UserType[];
-    isAddingUser: boolean;
-    randomNumber: number;
-    numberOfUsers: Derived<Store, number>;
+    namespace: {
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+  actions: {
+    [key: string]: any;
+  };
+}
+
+interface Store extends InitialStore {
+  state: {
+    namespace: {
+      users: UserType[];
+      isAddingUser: boolean;
+      randomNumber: number;
+      numberOfUsers: Derived<Store, number>;
+    };
   };
   actions: {
     namespace: {
@@ -29,24 +43,29 @@ let id = 0;
 
 const store: Store = {
   state: {
-    users: [],
-    isAddingUser: false,
-    randomNumber: 0,
-    numberOfUsers: ({ state }) => state.users.length
+    namespace: {
+      users: [],
+      isAddingUser: false,
+      randomNumber: 0,
+      numberOfUsers: ({ state }) => {
+        return state.namespace.users.length;
+      }
+    }
   },
   actions: {
     namespace: {
       addUserAsync: ({ state }) => async (name) => {
-        state.isAddingUser = true;
+        state.namespace.isAddingUser = true;
+        const a: number = state.namespace.numberOfUsers;
         await new Promise((resolve) => setTimeout(resolve, 1500));
-        state.users.push({ id: id++, name, surname: "Async" });
-        state.isAddingUser = false;
+        state.namespace.users.push({ id: id++, name, surname: "Async" });
+        state.namespace.isAddingUser = false;
       },
       addUserSync: ({ state }) => (name) => {
-        state.users.push({ id: id++, name, surname: "Sync" });
+        state.namespace.users.push({ id: id++, name, surname: "Sync" });
       },
       randomNumber: ({ state }) => {
-        state.randomNumber = Math.ceil(Math.random() * 10);
+        state.namespace.randomNumber = Math.ceil(Math.random() * 10);
       }
     }
   }
@@ -83,7 +102,9 @@ const AddUser = connect(function AddUser() {
 
 const AddingUser = connect(function AddingUser() {
   const { state } = useConnect();
-  return state.isAddingUser ? <div>Adding user, please wait...</div> : null;
+  return state.namespace.isAddingUser ? (
+    <div>Adding user, please wait...</div>
+  ) : null;
 });
 
 const RandomNumber = connect(function RandomNumber() {
@@ -93,14 +114,14 @@ const RandomNumber = connect(function RandomNumber() {
       <button onClick={() => actions.namespace.randomNumber()}>
         pick new number
       </button>{" "}
-      {state.randomNumber}
+      {state.namespace.randomNumber}
     </div>
   );
 });
 
 const NumberOfUsers = connect(function NumberOfUsers() {
   const { state } = useConnect();
-  return <div>Users: {state.numberOfUsers}</div>;
+  return <div>Users: {state.namespace.numberOfUsers}</div>;
 });
 
 const Empty = connect(function Empty() {
@@ -117,7 +138,7 @@ export default function App() {
     <div className="App">
       <h1>Immutable Connect</h1>
       <RandomNumber />
-      {state.users.map((user) => (
+      {state.namespace.users.map((user) => (
         <User key={user.id} user={user} />
       ))}
       <AddUser />
