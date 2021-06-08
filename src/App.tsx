@@ -9,19 +9,7 @@ interface UserType {
   surname: string;
 }
 
-interface InitialStore {
-  state: {
-    namespace: {
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
-  actions: {
-    [key: string]: any;
-  };
-}
-
-interface Store extends InitialStore {
+interface Store {
   state: {
     namespace: {
       users: UserType[];
@@ -56,7 +44,6 @@ const store: Store = {
     namespace: {
       addUserAsync: ({ state }) => async (name) => {
         state.namespace.isAddingUser = true;
-        const a: number = state.namespace.numberOfUsers;
         await new Promise((resolve) => setTimeout(resolve, 1500));
         state.namespace.users.push({ id: id++, name, surname: "Async" });
         state.namespace.isAddingUser = false;

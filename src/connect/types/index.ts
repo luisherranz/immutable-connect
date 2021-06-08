@@ -1,3 +1,4 @@
+import { Any } from "ts-toolbelt";
 import { DeepResolveType } from "valtio";
 import InitialStore from "./generic-store";
 import { ResolveActions, ResolveState } from "./resolve";
@@ -25,12 +26,12 @@ export type Action<
   A10 = null
 > = [A1] extends [null]
   ? (store: {
-      state: ResolveState<Store["state"]>;
-      actions: ResolveActions<Store["actions"]>;
+      state: Any.Compute<ResolveState<Store["state"]>>;
+      actions: Any.Compute<ResolveActions<Store["actions"]>>;
     }) => void
   : (store: {
-      state: ResolveState<Store["state"]>;
-      actions: ResolveActions<Store["actions"]>;
+      state: Any.Compute<ResolveState<Store["state"]>>;
+      actions: Any.Compute<ResolveActions<Store["actions"]>>;
     }) => (...args: Arguments<A1, A2, A3, A4, A5, A6, A7, A8, A9, A10>) => void;
 
 /**
@@ -50,12 +51,12 @@ export type AsyncAction<
   A10 = null
 > = [A1] extends [null]
   ? (store: {
-      state: ResolveState<Store["state"]>;
-      actions: ResolveActions<Store["actions"]>;
+      state: Any.Compute<ResolveState<Store["state"]>>;
+      actions: Any.Compute<ResolveActions<Store["actions"]>>;
     }) => Promise<void>
   : (store: {
-      state: ResolveState<Store["state"]>;
-      actions: ResolveActions<Store["actions"]>;
+      state: Any.Compute<ResolveState<Store["state"]>>;
+      actions: Any.Compute<ResolveActions<Store["actions"]>>;
     }) => (
       ...args: Arguments<A1, A2, A3, A4, A5, A6, A7, A8, A9, A10>
     ) => Promise<void>;
@@ -71,9 +72,11 @@ export type Derived<
   InputOrOutput,
   Output = null
 > = [Output] extends [null]
-  ? (store: { state: ResolveState<Store["state"]> }) => InputOrOutput
+  ? (store: {
+      state: Any.Compute<ResolveState<Store["state"]>>;
+    }) => InputOrOutput
   : (store: {
-      state: ResolveState<Store["state"]>;
+      state: Any.Compute<ResolveState<Store["state"]>>;
     }) => (input: InputOrOutput) => Output;
 
 /**
