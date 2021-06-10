@@ -5,6 +5,7 @@
     "compilerOptions": {
         "strict": true,
         "esModuleInterop": true,
+        "target": "es2020",
         "lib": [
             "dom",
             "es2015"

@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { proxy, snapshot, subscribe, useSnapshot } from "valtio";
+import {
+  DeepResolveType,
+  proxy,
+  snapshot,
+  subscribe,
+  useSnapshot
+} from "valtio";
 import { devtools } from "./devtools";
 import wrapActions from "./proxies/actions";
 import wrapState from "./proxies/state";
@@ -41,6 +47,112 @@ import { memo } from "react";
  * - ✅ Do not subscribe if `state` is not used (i.e.: `const { actions } =
  * useConnect()`). We are using the "hidden prop subscribition" workaround for now.
  */
+
+const now = (): string => {
+  const date = new Date();
+  return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+};
+
+/**
+ * Store
+ */
+class Store<T extends InitialStore> {
+  readonly name: string;
+  readonly #mutableState: T["state"];
+  readonly send: (message: string) => void;
+  readonly state: ResolveState<T["state"]>;
+
+  constructor(initialStore: T, name: string = "Frontity") {
+    this.name = name;
+    this.#mutableState = proxy(initialStore.state);
+    this.send = this.initDevTools();
+    this.state = this.initState();
+
+    // Send initial snapshot.
+    this.send("Frontity started");
+  }
+
+  initState(): ResolveState<T["state"]> {
+    return this.#mutableState;
+  }
+
+  initDevTools(): Store<T>["send"] {
+    let extension: any;
+    let isTimeTraveling = false;
+    let prevSnapshot: DeepResolveType<T["state"]>;
+
+    try {
+      extension = (window as any).__REDUX_DEVTOOLS_EXTENSION__;
+    } catch {}
+    if (!extension) return () => {};
+
+    const devtools = extension.connect({ name: this.name });
+
+    subscribe(this.#mutableState, () => {
+      if (isTimeTraveling) {
+        isTimeTraveling = false;
+      } else {
+        const newSnapshot = snapshot(this.#mutableState);
+        if (prevSnapshot !== newSnapshot) {
+          prevSnapshot = newSnapshot;
+          devtools.send(`Update - ${now()}`, newSnapshot);
+        }
+      }
+    });
+
+    devtools.subscribe(
+      (message: { type: string; payload?: any; state?: any }) => {
+        if (message.type === "DISPATCH" && message.state) {
+          if (
+            message.payload?.type === "JUMP_TO_ACTION" ||
+            message.payload?.type === "JUMP_TO_STATE"
+          ) {
+            isTimeTraveling = true;
+          }
+          const nextValue = JSON.parse(message.state);
+          Object.keys(nextValue).forEach((key) => {
+            (this.#mutableState as any)[key] = nextValue[key];
+          });
+        } else if (
+          message.type === "DISPATCH" &&
+          message.payload?.type === "COMMIT"
+        ) {
+          devtools.init(snapshot(this.#mutableState));
+        } else if (
+          message.type === "DISPATCH" &&
+          message.payload?.type === "IMPORT_STATE"
+        ) {
+          const actions = message.payload.nextLiftedState?.actionsById;
+          const computedStates =
+            message.payload.nextLiftedState?.computedStates || [];
+
+          isTimeTraveling = true;
+
+          computedStates.forEach(({ state }: { state: any }, index: number) => {
+            const action =
+              actions[index] || `Update - ${new Date().toLocaleString()}`;
+
+            Object.keys(state).forEach((key) => {
+              (this.#mutableState as any)[key] = state[key];
+            });
+
+            if (index === 0) {
+              devtools.init(snapshot(this.#mutableState));
+            } else {
+              devtools.send(action, snapshot(this.#mutableState));
+            }
+          });
+        }
+      }
+    );
+
+    return (message: string): void => {
+      const newSnapshot = snapshot(this.#mutableState);
+      prevSnapshot = newSnapshot;
+      devtools.send(message, newSnapshot);
+    };
+  }
+}
 
 const createStore = <Store extends InitialStore>(
   initialStore: Store,
