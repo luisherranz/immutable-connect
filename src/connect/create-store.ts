@@ -1,20 +1,29 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import { proxy, snapshot, subscribe, useSnapshot } from "valtio";
 import { devtools } from "./devtools";
 import wrapActions from "./proxies/actions";
 import wrapState from "./proxies/state";
 import type InitialStore from "./types/generic-store";
-import type { ResolveActions, ResolveState } from "./types/resolve";
+import type {
+  ResolveActions,
+  ResolveState,
+  ResolveStore
+} from "./types/resolve";
 import type { Any } from "ts-toolbelt";
 import { memo } from "react";
 
 /**
+ * https://excalidraw.com/#json=5473289296150528,PX718mlfznZpqVdZlHSAvg
+ *
  * TODO:
- * - ✅ DevTools sync action messages.
  * - ✅ Switch to React Concurrent.
  * - ✅ Add derived state.
- * - Derived state types.
- * - Reuse proxies for the same objects (references).
- *    https://excalidraw.com/#json=5473289296150528,PX718mlfznZpqVdZlHSAvg
+ * - ✅ Derived state types.
+ * - ✅ Apply Compute to all resolved types.
+ * - Reuse action proxies for the same objects (references).
+ * - Add onAction hook.
+ * - DevTools action messages refactoring.
+ * - Reuse state proxies for the same objects (references).
  * - Mutate state passed to components.
  * - Inject store when using `connect()`.
  * - Make sure connected children rerender.
@@ -22,7 +31,6 @@ import { memo } from "react";
  * shouldn't rerender if only state.users[3].name changed).
  * - Pass complete action names, including namespaces, to devtools.
  * - Add onMutation hook.
- * - Add onAction hook.
  * - Add onDerived hook.
  * - Replicate `observe()` (for backward compatibility).
  *
@@ -31,31 +39,26 @@ import { memo } from "react";
  * mutation.
  * - Figure out how to do nested derived state.
  * - ✅ Do not subscribe if `state` is not used (i.e.: `const { actions } =
- * useConnect()`).
+ * useConnect()`). We are using the "hidden prop subscribition" workaround for now.
  */
 
 const createStore = <Store extends InitialStore>(
   initialStore: Store,
   name: string = "Frontity"
 ) => {
-  // Init the store to pass its reference to the wrappers.
-  const store: InitialStore = { state: {}, actions: {} };
-
   // First proxification from valtio. This generates the first proxy that is
   // used to keep track of mutations.
-  const mutableState: InitialStore["state"] = proxy(initialStore.state);
+  const mutableState: Store["state"] = proxy(initialStore.state);
 
   // Initialize the Redux DevTools.
   const { send } = devtools(mutableState, name);
   send("Frontity started", snapshot(mutableState));
 
-  // Proxify the actions with a wrapper that injects the store when an action is
-  // executed.
-  store.actions = wrapActions(store, initialStore.actions, send);
-
-  // Proxify the state with a wrapper that injects the store to the derived
-  // state.
-  store.state = wrapState(mutableState);
+  // Init the store to pass its reference to the wrappers.
+  const store: ResolveStore<Store> = {
+    state: wrapState(mutableState),
+    actions: wrapActions(store, initialStore.actions)
+  };
 
   // Add store to window (for debugging).
   (window as any).connect = store;
@@ -71,7 +74,7 @@ const createStore = <Store extends InitialStore>(
       snapshot.CONNECT; // eslint-disable-line
 
       return {
-        actions: store.actions as Any.Compute<ResolveActions<Store["actions"]>>,
+        actions: store.actions,
         state: wrapState(snapshot) as Any.Compute<ResolveState<Store["state"]>>
       };
     },

@@ -65,12 +65,9 @@ onSnapshot((state) => {
 });
 
 const User = connect(function User({ user }: { user: UserType }) {
-  // useEffect(() => {
-  //   console.log(`User: ${user.id}`);
-  // });
   return (
     <h2>
-      {user.id}: {user?.name} {user?.surname}
+      {user.id}: {user.name} {user.surname}
     </h2>
   );
 });

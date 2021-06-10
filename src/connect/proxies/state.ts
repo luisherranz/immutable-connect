@@ -1,4 +1,5 @@
-import { InitialStore } from "../types";
+import Store from "../types/generic-store";
+import { ResolveState } from "../types/resolve";
 
 /**
  * A list of internal JavaScript symbols that should be skipped.
@@ -10,8 +11,8 @@ const wellKnownSymbols = new Set(
 );
 
 export const wrapState = (
-  snapshot: InitialStore["state"]
-): InitialStore["state"] => {
+  snapshot: Store["state"]
+): ResolveState<Store["state"]> => {
   const handlers = {
     get(target: object, key: PropertyKey, receiver?: any): any {
       const result = Reflect.get(target, key, receiver);
@@ -32,7 +33,7 @@ export const wrapState = (
       return result;
     }
   };
-  return new Proxy(snapshot, handlers);
+  return new Proxy<ResolveState<Store["state"]>>(snapshot, handlers);
 };
 
 export default wrapState;

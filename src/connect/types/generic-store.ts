@@ -8,8 +8,8 @@
  * Store.
  */
 export interface Store {
-  state: Record<string, any>;
-  actions: Record<string, any>;
+  state: Record<string, unknown>;
+  actions: Record<string, unknown>;
 }
 
 export default Store;
@@ -76,6 +76,11 @@ export type ActionWithoutArgs = (store: Store) => void | Promise<void>;
 export type ActionWithArgs = (
   store: Store
 ) => (...args: any[]) => void | Promise<void>;
+
+/**
+ * Action. It can have args or not and it can be sync or async.
+ */
+export type Action = ActionWithoutArgs | ActionWithArgs;
 
 /**
  * Map of actions.

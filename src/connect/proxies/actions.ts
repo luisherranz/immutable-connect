@@ -1,5 +1,6 @@
-import { snapshot } from "valtio";
-import type { InitialStore, InitialStoreAction, DevToolsSend } from "../types";
+import type Store from "../types/generic-store";
+import type { Action } from "../types/generic-store";
+import type { ResolveActions } from "../types/resolve";
 
 /**
  * Execute an action, injecting the store
@@ -9,12 +10,9 @@ import type { InitialStore, InitialStoreAction, DevToolsSend } from "../types";
  * @param name - The name of this action.
  * @param send - The send method of the redux devtools.
  */
-const executeAction = (
-  action: InitialStoreAction,
-  store: InitialStore,
-  name: string,
-  send: DevToolsSend
-) => (...args: any[]): Promise<void> | void => {
+const executeAction = (action: Action, store: Store) => (
+  ...args: any[]
+): Promise<void> | void => {
   // Run the action injecting the store.
   const first = action(store);
 
@@ -27,16 +25,12 @@ const executeAction = (
    * async ({ state, actions }) => { ... }
    */
   if (first instanceof Promise) {
-    send(`"${name}" started (async)`, snapshot(store.state));
-
     return new Promise((resolve, reject) =>
       first
         .then(() => {
-          send(`"${name}" finished (async)`, snapshot(store.state));
           resolve();
         })
         .catch((err) => {
-          send(`"${name}" errored (async)`, snapshot(store.state));
           reject(err);
         })
     );
@@ -56,19 +50,12 @@ const executeAction = (
      * ({ state, actions }) => async (arg1, arg2, ...) => { ... }
      */
     if (second instanceof Promise) {
-      send(
-        { type: `"${name}" started (async)`, ...args },
-        snapshot(store.state)
-      );
-
       return new Promise((resolve, reject) =>
         second
           .then(() => {
-            send(`"${name}" finished (async)`, snapshot(store.state));
             resolve();
           })
           .catch((err) => {
-            send(`"${name}" errored (async)`, snapshot(store.state));
             reject(err);
           })
       );
@@ -80,8 +67,7 @@ const executeAction = (
      * @example
      * ({ state, actions }) => (arg1, arg2, ...) => { ... }
      */
-    send({ type: `"${name}"`, ...args }, snapshot(store.state));
-    return;
+    return undefined;
   }
 
   /**
@@ -91,7 +77,7 @@ const executeAction = (
    * @example
    * ({ state, actions }) => { ... }
    */
-  send(`"${name}"`, snapshot(store.state));
+  return undefined;
 };
 
 /**
@@ -102,20 +88,18 @@ const executeAction = (
  * @param send - The send method of the redux devtools.
  */
 export const wrapActions = (
-  store: InitialStore,
-  actions: InitialStore["actions"],
-  send: DevToolsSend
-): InitialStore["actions"] => {
+  store: Store,
+  actions: Store["actions"]
+): ResolveActions<Store["actions"]> => {
   // Create a handlers object that will be reused by all proxies using the
   // closure of the `store`.
   const handlers = {
-    get(target: object, key: PropertyKey, receiver?: any) {
+    get(target: object, key: PropertyKey, receiver?: any): object | Action {
       // Get the action (or action map).
       const action = Reflect.get(target, key, receiver);
 
       // If it is an action, execute it using the wrapper.
-      if (typeof action === "function")
-        return executeAction(action, store, key.toString(), send);
+      if (typeof action === "function") return executeAction(action, store);
 
       // If it is not a map, throw. Only actions and maps of actions are
       // allowed.
@@ -124,12 +108,12 @@ export const wrapActions = (
       }
 
       // If it is a map, wrap it again with the proxy.
-      return new Proxy<InitialStore["actions"]>(action, handlers);
+      return new Proxy(action, handlers);
     }
   };
 
   // Wrap the first map of actions with the proxy.
-  return new Proxy<InitialStore["actions"]>(actions, handlers);
+  return new Proxy<ResolveActions<Store["actions"]>>(actions, handlers);
 };
 
 export default wrapActions;

@@ -10,7 +10,7 @@ import { ResolveActions, ResolveState } from "./resolve";
  */
 
 /**
- * Sync action definition. Can have args or not.
+ * Sync action definition. It can have args or not.
  */
 export type Action<
   Store extends InitialStore,
@@ -35,7 +35,7 @@ export type Action<
     }) => (...args: Arguments<A1, A2, A3, A4, A5, A6, A7, A8, A9, A10>) => void;
 
 /**
- * Async action definition. Can have args or not.
+ * Async action definition. It can have args or not.
  */
 export type AsyncAction<
   Store extends InitialStore,
@@ -65,7 +65,7 @@ export interface Actions<T extends InitialStore> {
 }
 
 /**
- * Derived state definition.
+ * Derived state definition. It can have args or not.
  */
 export type Derived<
   Store extends InitialStore,
